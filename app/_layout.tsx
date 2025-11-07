@@ -3,9 +3,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from '../contexts/AppContext';
+import { AuthProvider } from '../contexts/AuthContext';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -15,19 +15,23 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <StatusBar style="light" backgroundColor="#000" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="record" />
-          <Stack.Screen name="profile/[userId]" />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <StatusBar style="light" backgroundColor="#000" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="auth/login" />
+            <Stack.Screen name="auth/signup" />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="record" />
+            <Stack.Screen name="profile/[userId]" />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </AppProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

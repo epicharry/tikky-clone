@@ -9,8 +9,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Settings, Grid3x3, Heart } from 'lucide-react-native';
+import { Settings, Grid3x3, Heart, LogOut } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIDEO_SIZE = (SCREEN_WIDTH - 4) / 3;
@@ -26,20 +28,21 @@ const formatCount = (count: number): string => {
 };
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { allVideos } = useApp();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('videos' as 'videos' | 'liked');
 
-  const currentUser = {
-    id: 'current_user',
-    username: 'You',
-    avatar: 'https://i.pravatar.cc/150?img=99',
-    bio: 'Just joined! 🎉',
-    followers: 0,
-    following: 0,
-    totalLikes: 0,
-  };
+  if (!user) {
+    return null;
+  }
 
-  const userVideos = allVideos.filter((video) => video.creator.id === 'current_user');
+  const userVideos = allVideos.filter((video) => video.creator.id === user.id);
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/auth/login');
+  };
 
   const renderVideoItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -61,9 +64,9 @@ export default function ProfileScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <Text style={styles.headerUsername}>@{currentUser.username}</Text>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Settings size={24} color="#000" />
+        <Text style={styles.headerUsername}>@{user.username}</Text>
+        <TouchableOpacity style={styles.settingsButton} onPress={handleLogout}>
+          <LogOut size={24} color="#000" />
         </TouchableOpacity>
       </View>
 
@@ -77,7 +80,7 @@ export default function ProfileScreen() {
         ListHeaderComponent={
           <View>
             <View style={styles.profileHeader}>
-              <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
+              <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
 
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
@@ -85,17 +88,17 @@ export default function ProfileScreen() {
                   <Text style={styles.statLabel}>Posts</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{formatCount(currentUser.followers)}</Text>
+                  <Text style={styles.statNumber}>{formatCount(user.followers_count)}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{formatCount(currentUser.following)}</Text>
+                  <Text style={styles.statNumber}>{formatCount(user.following_count)}</Text>
                   <Text style={styles.statLabel}>Following</Text>
                 </View>
               </View>
             </View>
 
-            <Text style={styles.bio}>{currentUser.bio}</Text>
+            <Text style={styles.bio}>{user.bio}</Text>
 
             <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.editButton} activeOpacity={0.8}>
