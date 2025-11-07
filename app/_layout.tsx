@@ -20,10 +20,9 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: '#000' },
           }}
         >
-          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="record" />
           <Stack.Screen name="profile/[userID]" />
           <Stack.Screen name="+not-found" />
