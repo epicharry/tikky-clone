@@ -3,9 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "bunx rork start -p x9o1ptwobzv7p5gxrntsu --tunnel",
-    "start-web": "bunx rork start -p x9o1ptwobzv7p5gxrntsu --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p x9o1ptwobzv7p5gxrntsu --web --tunnel",
+    "start": "expo start --web",
+    "start-web": "expo start --web",
+    "start-web-dev": "DEBUG=expo* expo start --web",
     "lint": "expo lint",
     "postinstall": "echo 'Install complete'"
   },
