@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { Settings, Grid3x3, Heart, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserLikedVideos } from '../../services/videoLikesService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIDEO_SIZE = (SCREEN_WIDTH - 4) / 3;
@@ -32,12 +33,38 @@ export default function ProfileScreen() {
   const { allVideos } = useApp();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('videos' as 'videos' | 'liked');
+  const [likedVideos, setLikedVideos] = useState<any[]>([]);
+  const [loadingLikes, setLoadingLikes] = useState(false);
 
   if (!user) {
     return null;
   }
 
   const userVideos = allVideos.filter((video) => video.creator.id === user.id);
+
+  useEffect(() => {
+    if (activeTab === 'liked' && user) {
+      loadLikedVideos();
+    }
+  }, [activeTab, user]);
+
+  const loadLikedVideos = async () => {
+    if (!user) return;
+    setLoadingLikes(true);
+    try {
+      const likes = await getUserLikedVideos(user.id);
+      const likedVideosList = likes.map((like) => ({
+        id: like.video_id,
+        source: like.video_source,
+        likes: 0,
+      }));
+      setLikedVideos(likedVideosList);
+    } catch (error) {
+      console.error('Error loading liked videos:', error);
+    } finally {
+      setLoadingLikes(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -71,11 +98,11 @@ export default function ProfileScreen() {
       </View>
 
       <FlatList
-        data={activeTab === 'videos' ? userVideos : []}
+        data={activeTab === 'videos' ? userVideos : likedVideos}
         renderItem={renderVideoItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         numColumns={3}
-        columnWrapperStyle={userVideos.length > 0 ? styles.row : undefined}
+        columnWrapperStyle={(activeTab === 'videos' ? userVideos : likedVideos).length > 0 ? styles.row : undefined}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
