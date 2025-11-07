@@ -214,7 +214,7 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
     ]).start();
 
     if (newLikedState) {
-      const result = await likeVideo(user.id, video.id, videoSource);
+      const result = await likeVideo(user.id, video.id, videoSource, video);
       if (!result.success) {
         setIsLiked(false);
         setLikeCount(previousLikeCount);

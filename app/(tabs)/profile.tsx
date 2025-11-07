@@ -53,11 +53,14 @@ export default function ProfileScreen() {
     setLoadingLikes(true);
     try {
       const likes = await getUserLikedVideos(user.id);
-      const likedVideosList = likes.map((like) => ({
-        id: like.video_id,
-        source: like.video_source,
-        likes: 0,
-      }));
+      const likedVideosList = likes
+        .filter((like) => like.video_data)
+        .map((like) => ({
+          ...like.video_data,
+          id: like.video_id,
+          source: like.video_source,
+          thumbnail_url: like.thumbnail_url,
+        }));
       setLikedVideos(likedVideosList);
     } catch (error) {
       console.error('Error loading liked videos:', error);
@@ -71,20 +74,40 @@ export default function ProfileScreen() {
     router.replace('/auth/login');
   };
 
-  const renderVideoItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.videoItem}
-      activeOpacity={0.8}
-      onPress={() => console.log('Open video:', item.id)}
-    >
-      <View style={styles.videoThumbnail}>
+  const renderVideoItem = ({ item }: { item: any }) => {
+    const handleVideoPress = () => {
+      const videoSource = item.source || 'local';
+      router.push({
+        pathname: '/video-player',
+        params: {
+          videoData: JSON.stringify(item),
+          source: videoSource,
+        },
+      });
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.videoItem}
+        activeOpacity={0.8}
+        onPress={handleVideoPress}
+      >
+        {item.thumbnail_url || item.videoUrl ? (
+          <Image
+            source={{ uri: item.thumbnail_url || item.videoUrl }}
+            style={styles.videoThumbnail}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.videoThumbnail} />
+        )}
         <View style={styles.videoOverlay}>
           <Heart size={20} color="#fff" fill="#fff" />
-          <Text style={styles.videoStats}>{formatCount(item.likes)}</Text>
+          <Text style={styles.videoStats}>{formatCount(item.likes || 0)}</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>

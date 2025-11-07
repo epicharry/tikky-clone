@@ -6,15 +6,31 @@ export interface VideoLike {
   user_id: string;
   video_id: string;
   video_source: string;
+  video_url?: string;
+  thumbnail_url?: string;
+  video_data?: any;
   created_at: string;
 }
 
 export async function likeVideo(
   userId: string,
   videoId: string,
-  videoSource: string
+  videoSource: string,
+  videoData?: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const payload: any = {
+      user_id: userId,
+      video_id: videoId,
+      video_source: videoSource,
+    };
+
+    if (videoData) {
+      payload.video_url = videoData.videoUrl;
+      payload.thumbnail_url = videoData.thumbnail_url || videoData.videoUrl;
+      payload.video_data = videoData;
+    }
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/video_likes`, {
       method: 'POST',
       headers: {
@@ -23,11 +39,7 @@ export async function likeVideo(
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Prefer': 'return=representation',
       },
-      body: JSON.stringify({
-        user_id: userId,
-        video_id: videoId,
-        video_source: videoSource,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -100,10 +112,10 @@ export async function checkIfVideoIsLiked(
 
 export async function getUserLikedVideos(
   userId: string
-): Promise<Array<{ video_id: string; video_source: string }>> {
+): Promise<Array<VideoLike>> {
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/video_likes?user_id=eq.${userId}&select=video_id,video_source`,
+      `${SUPABASE_URL}/rest/v1/video_likes?user_id=eq.${userId}&select=*&order=created_at.desc`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,

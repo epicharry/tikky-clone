@@ -25,12 +25,27 @@ export default function VideoPlayerScreen() {
   const videoId = Array.isArray(params.videoId) ? params.videoId[0] : params.videoId;
   const source = (Array.isArray(params.source) ? params.source[0] : params.source) as VideoSource;
   const title = Array.isArray(params.title) ? params.title[0] : params.title;
+  const videoDataParam = Array.isArray(params.videoData) ? params.videoData[0] : params.videoData;
 
   useEffect(() => {
     loadVideoDetails();
-  }, [videoId, source]);
+  }, [videoId, source, videoDataParam]);
 
   const loadVideoDetails = async () => {
+    if (videoDataParam) {
+      try {
+        const parsedVideoData = JSON.parse(videoDataParam);
+        setVideoDetails({
+          video_url: parsedVideoData.videoUrl,
+          title: parsedVideoData.description || 'Liked Video',
+        });
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        console.error('Failed to parse video data:', err);
+      }
+    }
+
     if (!videoId || !source) {
       setError('Invalid video parameters');
       setIsLoading(false);
