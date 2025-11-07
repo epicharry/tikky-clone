@@ -69,6 +69,7 @@ export default function HomeScreen() {
             onLike={handleLike}
             onShare={handleShare}
             onUpdateComments={handleUpdateComments}
+            videoSource="local"
           />
         )}
         keyExtractor={(item) => item.id}

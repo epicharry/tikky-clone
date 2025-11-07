@@ -232,6 +232,7 @@ export default function DiscoverFeedScreen() {
             onLike={handleLike}
             onShare={handleShare}
             onUpdateComments={handleUpdateComments}
+            videoSource={source}
           />
         )}
         keyExtractor={(item, index) => `${item.id}-${index}`}

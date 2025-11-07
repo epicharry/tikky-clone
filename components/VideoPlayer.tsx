@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
-
 import { Video as VideoType } from '../mocks/videos';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 import CommentsModal from './CommentsModal';
+import { likeVideo, unlikeVideo, checkIfVideoIsLiked } from '../services/videoLikesService';
 
 type VideoPlayerProps = {
   video: VideoType;
@@ -25,6 +26,7 @@ type VideoPlayerProps = {
   onLike: (id: string) => void;
   onShare: (id: string) => void;
   onUpdateComments: (videoId: string, newComment: string) => void;
+  videoSource?: string;
 };
 
 let { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -39,11 +41,13 @@ const formatCount = (count: number): string => {
   return count.toString();
 };
 
-export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdateComments }: VideoPlayerProps) {
+export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdateComments, videoSource = 'local' }: VideoPlayerProps) {
   const { isFollowing, toggleFollow, trackVideoView } = useApp();
+  const { user } = useAuth();
   const videoRef = useRef(null as any);
   const [isPaused, setIsPaused] = useState(false);
-  const [isLiked, setIsLiked] = useState(video.isLiked);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(video.likes);
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [lastTap, setLastTap] = useState(0 as number);
   const [totalWatchTime, setTotalWatchTime] = useState(0 as number);
@@ -178,9 +182,22 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
     }
   }, [showControls]);
 
-  const handleLike = () => {
+  useEffect(() => {
+    if (user) {
+      checkIfVideoIsLiked(user.id, video.id, videoSource).then(setIsLiked);
+    }
+  }, [user, video.id, videoSource]);
+
+  const handleLike = async () => {
+    if (!user) {
+      return;
+    }
+
     const newLikedState = !isLiked;
+    const previousLikeCount = likeCount;
+
     setIsLiked(newLikedState);
+    setLikeCount(newLikedState ? likeCount + 1 : Math.max(0, likeCount - 1));
     onLike(video.id);
 
     Animated.sequence([
@@ -197,6 +214,12 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
     ]).start();
 
     if (newLikedState) {
+      const result = await likeVideo(user.id, video.id, videoSource);
+      if (!result.success) {
+        setIsLiked(false);
+        setLikeCount(previousLikeCount);
+        console.error('Failed to like video:', result.error);
+      }
       heartScale.setValue(0);
       Animated.sequence([
         Animated.timing(heartScale, {
@@ -210,6 +233,13 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
           useNativeDriver: true,
         }),
       ]).start();
+    } else {
+      const result = await unlikeVideo(user.id, video.id, videoSource);
+      if (!result.success) {
+        setIsLiked(true);
+        setLikeCount(previousLikeCount);
+        console.error('Failed to unlike video:', result.error);
+      }
     }
   };
 
@@ -327,7 +357,7 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
             </TouchableOpacity>
           </Animated.View>
           <Text style={styles.actionText}>
-            {formatCount(video.likes + (isLiked && !video.isLiked ? 1 : 0))}
+            {formatCount(likeCount)}
           </Text>
         </View>
 
