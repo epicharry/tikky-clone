@@ -7,7 +7,7 @@ export default function CreateScreen() {
 
   useEffect(() => {
     router.push('/record');
-  }, []);
+  }, [router]);
 
   return <View />;
 }

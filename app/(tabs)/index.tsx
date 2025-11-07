@@ -6,11 +6,8 @@ import {
   Dimensions,
   FlatList,
   Platform,
-  TouchableOpacity,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Plus } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 
 import VideoPlayer from '../../components/VideoPlayer';
 import { useApp } from '../../contexts/AppContext';
@@ -18,7 +15,6 @@ import { useApp } from '../../contexts/AppContext';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const router = useRouter();
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const { videos, likeVideo, moveToNextVideo, isRecommendationReady } = useApp();
 
