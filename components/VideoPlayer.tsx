@@ -10,7 +10,9 @@ import {
   Animated,
   Image,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 
 import { Video as VideoType } from '../mocks/videos';
@@ -25,7 +27,7 @@ type VideoPlayerProps = {
   onUpdateComments: (videoId: string, newComment: string) => void;
 };
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+let { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const formatCount = (count: number): string => {
   if (count >= 1000000) {
@@ -52,6 +54,9 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
   const heartScale = useRef(new Animated.Value(0)).current;
   const musicRotation = useRef(new Animated.Value(0)).current;
   const isUserFollowing = isFollowing(video.creator.id);
+  const [showControls, setShowControls] = useState(true);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const startMusicRotation = () => {
     musicRotation.setValue(0);
@@ -128,6 +133,50 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
       }, DOUBLE_TAP_DELAY);
     }
   };
+
+  const handleSingleTap = () => {
+    setShowControls(!showControls);
+
+    if (hideControlsTimeout.current) {
+      clearTimeout(hideControlsTimeout.current);
+    }
+
+    if (!showControls) {
+      hideControlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  };
+
+  useEffect(() => {
+    const updateLayout = () => {
+      const { width, height } = Dimensions.get('window');
+      SCREEN_WIDTH = width;
+      SCREEN_HEIGHT = height;
+      setIsLandscape(width > height);
+    };
+
+    const subscription = Dimensions.addEventListener('change', updateLayout);
+    updateLayout();
+
+    return () => {
+      subscription?.remove();
+      if (hideControlsTimeout.current) {
+        clearTimeout(hideControlsTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (showControls) {
+      if (hideControlsTimeout.current) {
+        clearTimeout(hideControlsTimeout.current);
+      }
+      hideControlsTimeout.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  }, [showControls]);
 
   const handleLike = () => {
     const newLikedState = !isLiked;
@@ -211,24 +260,22 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
           ref={videoRef}
           source={{ uri: video.videoUrl }}
           style={styles.video}
-          resizeMode={ResizeMode.COVER}
+          resizeMode={isLandscape ? ResizeMode.CONTAIN : ResizeMode.COVER}
           isLooping
           shouldPlay={isActive}
           onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         />
       )}
 
-      <TouchableOpacity
-        style={styles.videoOverlay}
-        activeOpacity={1}
-        onPress={handleDoubleTap}
-      >
-        {isPaused && (
-          <View style={styles.pausedOverlay}>
-            <View style={styles.pauseIcon} />
-          </View>
-        )}
-      </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={handleSingleTap}>
+        <View style={styles.videoOverlay}>
+          {isPaused && (
+            <View style={styles.pausedOverlay}>
+              <View style={styles.pauseIcon} />
+            </View>
+          )}
+        </View>
+      </TouchableWithoutFeedback>
 
       <Animated.View
         style={[
@@ -242,7 +289,8 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
         <Heart size={120} color="#fff" fill="#fff" />
       </Animated.View>
 
-      <View style={styles.rightActions}>
+      {showControls && (
+        <View style={styles.rightActions}>
         <TouchableOpacity
           style={styles.avatarContainer}
           activeOpacity={0.8}
@@ -302,9 +350,11 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
             <MoreHorizontal size={32} color="#fff" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-      </View>
+        </View>
+      )}
 
-      <View style={styles.bottomInfo}>
+      {showControls && (
+        <View style={styles.bottomInfo}>
         <Text style={styles.username}>@{video.creator.username}</Text>
         <Text style={styles.description}>{video.description}</Text>
         <View style={styles.musicContainer}>
@@ -313,9 +363,11 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
             {video.music.name} - {video.music.artist}
           </Text>
         </View>
-      </View>
+        </View>
+      )}
 
-      <Animated.View
+      {showControls && (
+        <Animated.View
         style={[
           styles.musicDisc,
           {
@@ -332,8 +384,9 @@ export default function VideoPlayer({ video, isActive, onLike, onShare, onUpdate
       >
         <View style={styles.musicDiscInner}>
           <Image source={{ uri: video.creator.avatar }} style={styles.musicDiscImage} />
-        </View>
-      </Animated.View>
+          </View>
+        </Animated.View>
+      )}
 
       <CommentsModal
         visible={commentsVisible}

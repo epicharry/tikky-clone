@@ -96,13 +96,13 @@ export default function DiscoverScreen() {
     }
   };
 
-  const handleVideoPress = (video: VideoSearchResult, source: VideoSource) => {
+  const handleVideoPress = (video: VideoSearchResult, index: number) => {
     router.push({
-      pathname: '/video-player',
+      pathname: '/discover-feed',
       params: {
-        videoId: video.id,
-        source: source,
-        title: video.title,
+        query: searchQuery,
+        source: selectedSources[0],
+        index: index.toString(),
       },
     });
   };
@@ -114,11 +114,11 @@ export default function DiscoverScreen() {
     setCurrentPage(1);
   };
 
-  const renderVideoItem = ({ item }: { item: VideoSearchResult }) => (
+  const renderVideoItem = ({ item, index }: { item: VideoSearchResult; index: number }) => (
     <TouchableOpacity
       style={styles.videoCard}
       activeOpacity={0.8}
-      onPress={() => handleVideoPress(item, selectedSources[0])}
+      onPress={() => handleVideoPress(item, index)}
     >
       <Image source={{ uri: item.thumbnail }} style={styles.videoThumbnail} />
       <View style={styles.videoInfo}>
