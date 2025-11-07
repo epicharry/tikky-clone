@@ -1,16 +1,133 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Search, TrendingUp, Hash } from 'lucide-react-native';
+import { Search, X } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import {
+  VIDEO_SOURCES,
+  VideoSource,
+  searchVideos,
+  VideoSearchResult,
+} from '../../services/videoSourceService';
 
 export default function DiscoverScreen() {
-  const trendingHashtags = [
-    { tag: 'fyp', views: '125.4B' },
-    { tag: 'viral', views: '89.2B' },
-    { tag: 'trending', views: '67.8B' },
-    { tag: 'comedy', views: '45.3B' },
-    { tag: 'dance', views: '38.9B' },
-  ];
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSources, setSelectedSources] = useState<VideoSource[]>(['xanimu']);
+  const [searchResults, setSearchResults] = useState<VideoSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const toggleSource = (sourceId: VideoSource) => {
+    setSelectedSources((prev) => {
+      if (prev.includes(sourceId)) {
+        return prev.filter((s) => s !== sourceId);
+      }
+      return [...prev, sourceId];
+    });
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || selectedSources.length === 0) {
+      return;
+    }
+
+    setIsSearching(true);
+    setHasSearched(true);
+    setCurrentPage(1);
+
+    try {
+      const allResults: VideoSearchResult[] = [];
+
+      for (const source of selectedSources) {
+        try {
+          const response = await searchVideos(source, searchQuery.trim(), 1);
+          allResults.push(...response.results);
+        } catch (error) {
+          console.error(`Failed to search ${source}:`, error);
+        }
+      }
+
+      setSearchResults(allResults);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const loadMoreResults = async () => {
+    if (isSearching || selectedSources.length === 0) {
+      return;
+    }
+
+    setIsSearching(true);
+    const nextPage = currentPage + 1;
+
+    try {
+      const allResults: VideoSearchResult[] = [];
+
+      for (const source of selectedSources) {
+        try {
+          const response = await searchVideos(source, searchQuery.trim(), nextPage);
+          allResults.push(...response.results);
+        } catch (error) {
+          console.error(`Failed to load more from ${source}:`, error);
+        }
+      }
+
+      setSearchResults((prev) => [...prev, ...allResults]);
+      setCurrentPage(nextPage);
+    } catch (error) {
+      console.error('Load more error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleVideoPress = (video: VideoSearchResult, source: VideoSource) => {
+    router.push({
+      pathname: '/video-player',
+      params: {
+        videoId: video.id,
+        source: source,
+        title: video.title,
+      },
+    });
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+    setCurrentPage(1);
+  };
+
+  const renderVideoItem = ({ item }: { item: VideoSearchResult }) => (
+    <TouchableOpacity
+      style={styles.videoCard}
+      activeOpacity={0.8}
+      onPress={() => handleVideoPress(item, selectedSources[0])}
+    >
+      <Image source={{ uri: item.thumbnail }} style={styles.videoThumbnail} />
+      <View style={styles.videoInfo}>
+        <Text style={styles.videoTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -20,35 +137,104 @@ export default function DiscoverScreen() {
         <Text style={styles.headerTitle}>Discover</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
           <Search size={20} color="#666" />
-          <Text style={styles.searchPlaceholder}>Search users, hashtags, sounds...</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search videos..."
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch}>
+              <X size={20} color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <TrendingUp size={20} color="#ff2e4c" />
-            <Text style={styles.sectionTitle}>Trending Hashtags</Text>
+        <View style={styles.sourcesContainer}>
+          <Text style={styles.sourcesLabel}>Sources:</Text>
+          <View style={styles.sourceButtons}>
+            {VIDEO_SOURCES.map((source) => (
+              <TouchableOpacity
+                key={source.id}
+                style={[
+                  styles.sourceButton,
+                  selectedSources.includes(source.id) && styles.sourceButtonActive,
+                ]}
+                onPress={() => toggleSource(source.id)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.sourceButtonText,
+                    selectedSources.includes(source.id) && styles.sourceButtonTextActive,
+                  ]}
+                >
+                  {source.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-
-          {trendingHashtags.map((item, index) => (
-            <View key={index} style={styles.hashtagItem}>
-              <View style={styles.hashtagIconContainer}>
-                <Hash size={20} color="#000" />
-              </View>
-              <View style={styles.hashtagInfo}>
-                <Text style={styles.hashtagText}>#{item.tag}</Text>
-                <Text style={styles.hashtagViews}>{item.views} views</Text>
-              </View>
-            </View>
-          ))}
         </View>
 
-        <View style={styles.placeholderSection}>
-          <Text style={styles.placeholderText}>More content coming soon...</Text>
-        </View>
-      </ScrollView>
+        <TouchableOpacity
+          style={[
+            styles.searchButton,
+            (!searchQuery.trim() || selectedSources.length === 0 || isSearching) &&
+              styles.searchButtonDisabled,
+          ]}
+          onPress={handleSearch}
+          disabled={!searchQuery.trim() || selectedSources.length === 0 || isSearching}
+          activeOpacity={0.8}
+        >
+          {isSearching && searchResults.length === 0 ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.searchButtonText}>Search</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.resultsContainer}>
+        {!hasSearched ? (
+          <View style={styles.emptyState}>
+            <Search size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>Search for videos</Text>
+            <Text style={styles.emptyText}>
+              Select a source and enter a search query to find videos
+            </Text>
+          </View>
+        ) : searchResults.length === 0 && !isSearching ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No results found</Text>
+            <Text style={styles.emptyText}>Try a different search term</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={searchResults}
+            renderItem={renderVideoItem}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            onEndReached={loadMoreResults}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              isSearching && searchResults.length > 0 ? (
+                <View style={styles.loadingMore}>
+                  <ActivityIndicator color="#ff2e4c" />
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -69,71 +255,128 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#000',
   },
-  content: {
-    flex: 1,
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 12,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    margin: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     gap: 12,
   },
-  searchPlaceholder: {
+  searchInput: {
+    flex: 1,
     fontSize: 15,
-    color: '#666',
+    color: '#000',
   },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  sectionHeader: {
+  sourcesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 12,
   },
-  sectionTitle: {
+  sourcesLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#000',
+  },
+  sourceButtons: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sourceButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  sourceButtonActive: {
+    backgroundColor: '#ff2e4c',
+    borderColor: '#ff2e4c',
+  },
+  sourceButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#666',
+  },
+  sourceButtonTextActive: {
+    color: '#fff',
+  },
+  searchButton: {
+    backgroundColor: '#ff2e4c',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  searchButtonDisabled: {
+    opacity: 0.5,
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  resultsContainer: {
+    flex: 1,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
     color: '#000',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  hashtagItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  hashtagIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  listContent: {
+    padding: 8,
   },
-  hashtagInfo: {
+  row: {
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  videoCard: {
     flex: 1,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+    overflow: 'hidden',
   },
-  hashtagText: {
-    fontSize: 16,
+  videoThumbnail: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#e0e0e0',
+  },
+  videoInfo: {
+    padding: 12,
+  },
+  videoTitle: {
+    fontSize: 14,
     fontWeight: '600' as const,
     color: '#000',
-    marginBottom: 2,
+    lineHeight: 18,
   },
-  hashtagViews: {
-    fontSize: 13,
-    color: '#666',
-  },
-  placeholderSection: {
+  loadingMore: {
+    paddingVertical: 20,
     alignItems: 'center',
-    paddingVertical: 40,
-  },
-  placeholderText: {
-    fontSize: 15,
-    color: '#999',
   },
 });

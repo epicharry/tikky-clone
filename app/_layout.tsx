@@ -28,6 +28,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="record" />
             <Stack.Screen name="edit-profile" />
+            <Stack.Screen name="video-player" />
             <Stack.Screen name="profile/[userId]" />
             <Stack.Screen name="+not-found" />
           </Stack>
