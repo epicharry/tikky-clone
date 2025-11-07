@@ -84,11 +84,14 @@ export default function DiscoverFeedScreen() {
         return {
           id: result.id,
           videoUrl: details.video_url,
-          thumbnailUrl: result.thumbnail,
-          user: {
+          creator: {
             id: 'discovery',
             username: 'Discovered',
             avatar: 'https://i.pravatar.cc/150?img=50',
+            bio: 'Discovered content',
+            followers: 0,
+            following: 0,
+            totalLikes: 0,
           },
           description: result.title,
           likes: 0,
@@ -97,8 +100,9 @@ export default function DiscoverFeedScreen() {
           isLiked: false,
           music: {
             name: result.title,
-            author: 'Unknown',
+            artist: 'Unknown',
           },
+          commentsList: [],
         };
       } catch (error) {
         console.error(`Failed to load video ${result.id}:`, error);
