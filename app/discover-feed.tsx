@@ -7,9 +7,12 @@ import {
   FlatList,
   Platform,
   ActivityIndicator,
+  TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ArrowLeft } from 'lucide-react-native';
 import VideoPlayer from '../components/VideoPlayer';
 import {
   searchVideos,
@@ -23,11 +26,14 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function DiscoverFeedScreen() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [preloadedVideoIds, setPreloadedVideoIds] = useState<Set<string>>(new Set());
+  const [showHeader, setShowHeader] = useState(true);
 
   const searchQuery = Array.isArray(params.query) ? params.query[0] : params.query;
   const source = (Array.isArray(params.source) ? params.source[0] : params.source) as VideoSource;
@@ -114,6 +120,37 @@ export default function DiscoverFeedScreen() {
     return videos.filter((v): v is VideoType => v !== null);
   };
 
+  useEffect(() => {
+    preloadNextVideos(activeVideoIndex);
+  }, [activeVideoIndex, videos]);
+
+  const preloadNextVideos = async (currentIndex: number) => {
+    const PRELOAD_COUNT = 5;
+    const startIndex = currentIndex + 1;
+    const endIndex = Math.min(startIndex + PRELOAD_COUNT, videos.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const video = videos[i];
+      if (video && !preloadedVideoIds.has(video.id)) {
+        try {
+          if (Platform.OS === 'web') {
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.as = 'video';
+            preloadLink.href = video.videoUrl;
+            document.head.appendChild(preloadLink);
+          } else {
+            fetch(video.videoUrl, { method: 'HEAD' }).catch(() => {});
+          }
+
+          setPreloadedVideoIds((prev) => new Set(prev).add(video.id));
+        } catch (error) {
+          console.log('Preload not supported or failed:', error);
+        }
+      }
+    }
+  };
+
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: any[] }) => {
       if (viewableItems.length > 0 && viewableItems[0].index !== null) {
@@ -171,6 +208,21 @@ export default function DiscoverFeedScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
+
+      {showHeader && (
+        <SafeAreaView style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Discovery</Text>
+          <View style={styles.headerPlaceholder} />
+        </SafeAreaView>
+      )}
+
       <FlatList
         data={videos}
         renderItem={({ item, index }) => (
@@ -218,5 +270,29 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#fff',
     fontSize: 16,
+  },
+  headerContainer: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    zIndex: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#fff',
+  },
+  headerPlaceholder: {
+    width: 40,
   },
 });
