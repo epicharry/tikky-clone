@@ -226,7 +226,7 @@ const [AppContext, useApp] = createContextHook(() => {
   );
 });
 
-export { useApp, AppContext };
+export { useApp };
 
-// The context hook library returns [Context, hook], so the Context is the provider
-export const AppProvider = AppContext.Provider;
+// The AppContext itself is the provider component
+export const AppProvider = AppContext;
